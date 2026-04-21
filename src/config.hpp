@@ -1,0 +1,11 @@
+#ifndef _SETTINGS_H_ 
+
+#define TICKS_PER_REVOLUTION 1200 
+#define WHEEL_RADIUS 0.023
+#define WHEELS_SPACING 0.074
+
+#define WHEEL_UPDATE_INTERVAL_MS 50
+
+#define WHEEL_MAX_PWM 50
+
+#endif /* _SETTINGS_H_ */
