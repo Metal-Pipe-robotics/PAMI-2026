@@ -3,6 +3,8 @@
 #include "pins.hpp"
 #include "tools.hpp"
 
+static SemaphoreHandle_t xStateMutex;
+
 typedef struct {
   enum side_t side;
   volatile long encoderTicks;
@@ -95,6 +97,9 @@ static void wheel_init(DCMotor *m, void (*enc_func)()) {
   ledcWrite(m->pwmchanelccw, 0);
 
   attachInterrupt(digitalPinToInterrupt(m->encpin2), enc_func, RISING);
+
+  xStateMutex = xSemaphoreCreateMutex();
+  configASSERT(xStateMutex);
 }
 
 void wheels_init() {
@@ -109,10 +114,13 @@ void odometry_update(const long lticks, const long rticks) {
   const double dist = (ldist + rdist) / 2;
   const double dz = (rdist - ldist);
 
-  z += normalizeAngle(dz / WHEELS_SPACING);
-  x += dist * cosf(z);
-  y -= dist * sinf(z);
-  Serial.printf("xyz: \t%lf %lf %lf (%lf)\n", x, y, z, z*180.f/M_PI);
+  if (xSemaphoreTake(xStateMutex, portMAX_DELAY) == pdTRUE) {
+    z += normalizeAngle(dz / WHEELS_SPACING);
+    x += dist * cosf(z);
+    y -= dist * sinf(z);
+    xSemaphoreGive(xStateMutex);
+  }
+  // Serial.printf("xyz: \t%lf %lf %lf (%lf)\n", x, y, z, z*180.f/M_PI);
 }
 
 void encoders_update() {
@@ -141,7 +149,7 @@ void encoders_update() {
 void wheel_update(DCMotor *m) {
   const float magicNumber = 15.f / 50.f * WHEEL_UPDATE_INTERVAL_MS;
   const long ticksDiff = m->ticksAim - m->ticksCounter;
-  float newpwm = constrainf(ticksDiff * 0.02f, m->pwm -.8, m->pwm + .8);
+  float newpwm = constrainf(ticksDiff * 0.02f, m->pwm -5.8, m->pwm + 5.8);
   if (m->pwm < 1e-6f && ticksDiff > 130) {
     newpwm = (ticksDiff >= 0.f ? 1.f : -1.f) * 20.f;
   }
@@ -161,7 +169,7 @@ void dual_wheels_correction() {
   const int rsign = mr.pwm < 0 ? -1 : 1;
   const float correctionCoeff = fabs(kp * z * (ml.pwm + mr.pwm) / 2);
   const float correctedCorrectionCoeff = constrainf(correctionCoeff, -40.f, 40.f);
-  Serial.printf("Coef: \t%f\n", correctedCorrectionCoeff);
+  // Serial.printf("Coef: \t%f\n", correctedCorrectionCoeff);
   if (z > 0) { // Rigth ahead
     mr.correctedpwm = mr.pwm - rsign * correctedCorrectionCoeff;
     ml.correctedpwm = ml.pwm + lsign * correctedCorrectionCoeff;
@@ -169,7 +177,7 @@ void dual_wheels_correction() {
     mr.correctedpwm = mr.pwm + rsign * correctedCorrectionCoeff;
     ml.correctedpwm = ml.pwm - lsign * correctedCorrectionCoeff;
   }
-  Serial.printf("pwm : %f \t %f\n", ml.correctedpwm, mr.correctedpwm);
+  // Serial.printf("pwm : %f \t %f\n", ml.correctedpwm, mr.correctedpwm);
 }
 
 /* pwm > 0 is forward, backward otherward */
@@ -183,43 +191,24 @@ void wheel_setpwm(float pwm, const enum side_t side) {
   pwm = fabs(pwm);
 
   if (dir) {
-    ledcWrite(m->pwmchanelcw, 255-pwm);
-    ledcWrite(m->pwmchanelccw, 255);
-  } else {
-    ledcWrite(m->pwmchanelcw, 255);
     ledcWrite(m->pwmchanelccw, 255-pwm);
+    ledcWrite(m->pwmchanelcw, 255);
+  } else {
+    ledcWrite(m->pwmchanelccw, 255);
+    ledcWrite(m->pwmchanelcw, 255-pwm);
 
   }
   // Serial.printf("%s: ctrlpin1 : %d | ctrlpin2 : %d | dir : %d | pwmchanel :%d | pwm : %f\n", side == LEFT ? "LEFT" : "RIGHT", m->ctrlpin1, m->ctrlpin2, dir, m->pwmchanel, pwm);
 }
 
-/* pwm > 0 is forward, backward otherward */
-void wheel_setpwm_adapted(float pwm, const enum side_t side) {
-  DCMotor *m = (side == LEFT) ? &ml : &mr;
-
-  digitalWrite(STDBYP, HIGH);
-
-  /* Ensure the pwm>0 is forward rule */
-  const int dir = (m->side * pwm) >= 0.f ? 0 : 1;
-  pwm = dir ? fabs(pwm) : 255 - fabs(pwm);
-
-  /* Clockwise and non-clockwise motors' speed are not equal for a same pwm.
-    * Thus we try here to make them equivalent 
-    */
-  // if (dir)
-  //   pwm = constrainf(pwm*pwm, 0, 255);
-
-  // digitalWrite(m->ctrlpin2, dir ? LOW : HIGH);
-  // ledcWrite(m->pwmchanel, pwm);
-  // Serial.printf("%s: ctrlpin1 : %d | ctrlpin2 : %d | dir : %d | pwmchanel :%d | pwm : %f\n", side == LEFT ? "LEFT" : "RIGHT", m->ctrlpin1, m->ctrlpin2, dir, m->pwmchanel, pwm);
-}
-
 void wheels_update() {
-  encoders_update();
 
-  wheel_update(&ml);
-  wheel_update(&mr);
-  dual_wheels_correction();
+  if (xSemaphoreTake(xStateMutex, portMAX_DELAY) == pdTRUE) {
+    wheel_update(&ml);
+    wheel_update(&mr);
+    dual_wheels_correction();
+    xSemaphoreGive(xStateMutex);
+  }
 
   wheel_setpwm(mr.correctedpwm, RIGHT);
   wheel_setpwm(ml.correctedpwm, LEFT);
@@ -241,4 +230,22 @@ float wheels_get_rpm(const enum side_t side) {
 float wheels_get_pwm(const enum side_t side) {
   DCMotor *m = (side == LEFT) ? &ml : &mr;
   return m->pwm;
+}
+
+void wheels_switch_off() {
+  digitalWrite(STDBYP, LOW);
+}
+
+long wheels_get_ticks(const enum side_t side) {
+  DCMotor *m = (side == LEFT) ? &ml : &mr;
+  return m->ticksCounter;
+}
+
+void odometry_get_pos(double *_x, double *_y, double *_z) {
+  if (xSemaphoreTake(xStateMutex, portMAX_DELAY) == pdTRUE) {
+    *_x = x;
+    *_y = y;
+    *_z = z;
+    xSemaphoreGive(xStateMutex);
+  }
 }

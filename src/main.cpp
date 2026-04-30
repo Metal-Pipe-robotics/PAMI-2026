@@ -1,43 +1,72 @@
 #include <Arduino.h>
+#include "pins.hpp"
 #include "wheel.hpp"
 #include "config.hpp"
 #include "tools.hpp"
 #include "test_motor_simple.hpp"
+#include "test_odometry.hpp"
 
 
+void vTaskEncoders(void *pvParameters) {
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+    const TickType_t xPeriod = pdMS_TO_TICKS(ENCODERS_UPDATE_INTERVAL_MS);
 
-long t_reverse_engine;
-long t_stop_engine;
+    for (;;) {
+        encoders_update();   // reads hardware — no shared state, no lock needed
+
+        vTaskDelayUntil(&xLastWakeTime, xPeriod);
+    }
+}
+
+void vTaskWheels(void *pvParameters) {
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+    const TickType_t xPeriod  = pdMS_TO_TICKS(WHEEL_UPDATE_INTERVAL_MS);
+
+    for (;;) {
+        wheels_update();
+
+        vTaskDelayUntil(&xLastWakeTime, xPeriod);
+    }
+}
+
+void vTaskPrintAndLED(void *pvParameters) {
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+    const TickType_t xPeriod = pdMS_TO_TICKS(300);
+    bool ledState = true;
+
+    for (;;) {
+        double x, y, z;
+        odometry_get_pos(&x, &y, &z);
+        
+        Serial.printf("%3.3lf   %3.3lf   %3.3lf\n", x, y, z * 180.0 / M_PI);
+
+        ledState = !ledState;
+        digitalWrite(LEDBLUEP, ledState ? HIGH : LOW);
+
+        vTaskDelayUntil(&xLastWakeTime, xPeriod);
+    }
+}
+
 void setup() {
   Serial.begin(9600);
   Serial.printf("Begin setup\n");
   wheels_init();
   sleep(1);
-  t_reverse_engine = millis() +10000;
-  t_stop_engine = millis() +16000;
-  wheels_setpoint(.5, RIGHT);
-  wheels_setpoint(.5, LEFT);
-  Serial.printf("Setup finished -> %ld %ld\n", millis(), t_reverse_engine);
+  wheels_setpoint(1.6, RIGHT);
+  wheels_setpoint(1.6, LEFT);
+  wheels_update();
+  pinMode(LEDBLUEP, OUTPUT);
+  pinMode(LEDWHITEP, OUTPUT);
+  digitalWrite(LEDBLUEP, HIGH);
+  digitalWrite(LEDWHITEP, LOW);
+  xTaskCreate(vTaskEncoders,    "Encoders",  2048, NULL, 3, NULL);
+  xTaskCreate(vTaskWheels,      "Wheels",    4096, NULL, 3, NULL);
+  xTaskCreate(vTaskPrintAndLED, "Print",     2048, NULL, 1, NULL);
 }
 
-unsigned long wheels_clock = 0;
 void loop() {
-  const long now = millis();
+  vTaskDelete(NULL);
+  // test_odometry();
   // test_motor_simple_begin();
   // test_display_motor_speed();
-  if (now - t_reverse_engine >= 0) {
-    Serial.printf("Reversing (%ld %ld)\n", now, now-t_reverse_engine);
-    wheels_setpoint(0., RIGHT);
-    wheels_setpoint(0., LEFT);
-    t_reverse_engine += 10e7;
-  }
-  // if (now - t_stop_engine >= 0) {
-  //   wheels_setpoint(-0.2, RIGHT);
-  //   wheels_setpoint(-0.2, LEFT);
-  //   t_stop_engine += 10e7;
-  // }
-  if (now - wheels_clock >= WHEEL_UPDATE_INTERVAL_MS) {
-      wheels_update();
-      wheels_clock = now;
-    }
-}
+ }
