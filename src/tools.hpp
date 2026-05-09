@@ -43,4 +43,12 @@ static inline float normalizeAngle(float angle) {
   return angle;
 }
 
+static inline float sumf(float arr[], const int n) {
+  float sum_value = 0.f;
+  int i;
+  for (i=0; i<n; i++)
+    sum_value += arr[i];
+  return sum_value;
+}
+
 #endif /* _TOOLS_H_ */

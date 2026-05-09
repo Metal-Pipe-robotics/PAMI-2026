@@ -163,21 +163,30 @@ void wheel_update(DCMotor *m) {
   m->pwm = newpwm;
 }
 
+static float ki_value = 0.f;
 void dual_wheels_correction() {
-  const float kp = .075 * 180.f / M_PI;
+  const float ki = 0; //-2.3;
+  const float kp = 1.3;
   const int lsign = ml.pwm < 0 ? -1 : 1;
   const int rsign = mr.pwm < 0 ? -1 : 1;
-  const float correctionCoeff = fabs(kp * z * (ml.pwm + mr.pwm) / 2);
+  const float value = fabs(z); 
+
+  // Inegrale
+  ki_value += z;
+  if (fabs(z) > (M_PI / 20))
+    ki_value = 0.f;
+
+  const float correctionCoeff = kp * value + ki * ki_value;
   const float correctedCorrectionCoeff = constrainf(correctionCoeff, -40.f, 40.f);
   // Serial.printf("Coef: \t%f\n", correctedCorrectionCoeff);
   if (z > 0) { // Rigth ahead
-    mr.correctedpwm = mr.pwm - rsign * correctedCorrectionCoeff;
-    ml.correctedpwm = ml.pwm + lsign * correctedCorrectionCoeff;
+    mr.correctedpwm = mr.pwm - (rsign * correctedCorrectionCoeff) * mr.pwm;
+    ml.correctedpwm = ml.pwm + (lsign * correctedCorrectionCoeff) * ml.pwm;
   } else { // Left ahead
-    mr.correctedpwm = mr.pwm + rsign * correctedCorrectionCoeff;
-    ml.correctedpwm = ml.pwm - lsign * correctedCorrectionCoeff;
+    mr.correctedpwm = mr.pwm + (rsign * correctedCorrectionCoeff) * mr.pwm;
+    ml.correctedpwm = ml.pwm - (lsign * correctedCorrectionCoeff) * ml.pwm;
   }
-  // Serial.printf("pwm : %f \t %f\n", ml.correctedpwm, mr.correctedpwm);
+  Serial.printf("pwm : %f \t %f   |   %f \t    %f\n", ml.correctedpwm, mr.correctedpwm, correctedCorrectionCoeff * ml.pwm, correctedCorrectionCoeff * mr.pwm);
 }
 
 /* pwm > 0 is forward, backward otherward */
