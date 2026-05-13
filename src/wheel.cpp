@@ -3,6 +3,7 @@
 #include "pins.hpp"
 #include "tools.hpp"
 
+static int switched_off = 0;
 static SemaphoreHandle_t xStateMutex;
 
 typedef struct {
@@ -97,6 +98,7 @@ static void wheel_init(DCMotor *m, void (*enc_func)()) {
   ledcWrite(m->pwmchanelccw, 0);
 
   attachInterrupt(digitalPinToInterrupt(m->encpin2), enc_func, RISING);
+  m->ticksAim = 0;
 
   xStateMutex = xSemaphoreCreateMutex();
   configASSERT(xStateMutex);
@@ -113,6 +115,7 @@ void odometry_update(const long lticks, const long rticks) {
   const float rdist = ticks_to_distance(rticks);
   const double dist = (ldist + rdist) / 2;
   const double dz = (rdist - ldist);
+
 
   if (xSemaphoreTake(xStateMutex, portMAX_DELAY) == pdTRUE) {
     z += normalizeAngle(dz / WHEELS_SPACING);
@@ -146,10 +149,17 @@ void encoders_update() {
   odometry_update(mlticks, mrticks);
 }
 
+void encoders_reset() {
+  noInterrupts();
+  ml.encoderTicks = 0;
+  mr.encoderTicks = 0;
+  interrupts();
+}
+
 void wheel_update(DCMotor *m) {
   const float magicNumber = 15.f / 50.f * WHEEL_UPDATE_INTERVAL_MS;
-  const long ticksDiff = m->ticksAim - m->ticksCounter;
-  float newpwm = constrainf(ticksDiff * 0.02f, m->pwm -5.8, m->pwm + 5.8);
+  const long ticksDiff = (m->ticksAim - m->ticksCounter) > 600 ? 30000 : (m->ticksAim - m->ticksCounter);
+  float newpwm = constrainf(ticksDiff * 0.02f, m->pwm -0.3, m->pwm + 0.3);
   if (m->pwm < 1e-6f && ticksDiff > 130) {
     newpwm = (ticksDiff >= 0.f ? 1.f : -1.f) * 20.f;
   }
@@ -163,10 +173,76 @@ void wheel_update(DCMotor *m) {
   m->pwm = newpwm;
 }
 
-static float ki_value = 0.f;
-void dual_wheels_correction() {
-  const float ki = 0; //-2.3;
-  const float kp = 1.3;
+void wheel_update_rotation(DCMotor *m) {
+  // Serial.printf("%s\n", __func__);
+  const float magicNumber = 15.f / 50.f * WHEEL_UPDATE_INTERVAL_MS;
+  const int sign = (m->ticksAim - m->ticksCounter) >= 0 ? 1 : -1;
+  // const long ticksDiff = fabs(m->ticksAim - m->ticksCounter) > 300 ? sign * 30000 : (m->ticksAim - m->ticksCounter);
+  const long ticksDiff = m->ticksAim - m->ticksCounter;
+  float newpwm = constrainf(ticksDiff * 0.14f, m->pwm -0.1, m->pwm + 0.1);
+  // if (fabs(m->pwm) < 1) {
+  //   if (ticksDiff >= 0)
+  //     newpwm = WHEEL_MIN_PWM;
+  //   else 
+  //     newpwm = -WHEEL_MIN_PWM;
+  // }
+  if (newpwm < WHEEL_MIN_PWM && sign >= 0) 
+    newpwm = WHEEL_MIN_PWM + newpwm;
+  else if (newpwm > -WHEEL_MIN_PWM && sign < 0)
+    newpwm = -WHEEL_MIN_PWM + newpwm;
+  // Serial.printf("%f\n", newpwm);
+  // if (m->pwm < 1e-6f && ticksDiff > 130) {
+  //   newpwm = (ticksDiff >= 0.f ? 1.f : -1.f) * 20.f;
+  // }
+  // if (fabs(newpwm) < magicNumber && abs(ticksDiff) > magicNumber) 
+  //   newpwm = ticksDiff < 0.f ? -magicNumber : magicNumber;
+  // else if (fabs(newpwm) < magicNumber && abs(ticksDiff) <= magicNumber)
+  //   newpwm = 0.f;
+  
+  newpwm = constrainf(newpwm, - WHEEL_MAX_PWM_ROTATION, WHEEL_MAX_PWM_ROTATION);
+  const int dir = (m->side * m->pwm) >= 0 ? 0 : 1;
+  m->pwm = newpwm;
+}
+
+int is_cmd_finished() {
+  // Serial.printf("%d %d\n", mr.ticksAim - mr.ticksCounter, ml.ticksAim - ml.ticksCounter);
+  if (fabs(mr.ticksAim - mr.ticksCounter) + fabs(ml.ticksAim - ml.ticksCounter) < 20)
+    return 1;
+  return 0;
+}
+
+void dual_wheels_correction_straight(float dz) {
+  float ki_value = 0.f;
+  const float ki = 0.; //-2.3;
+  const float kp = 1.18;
+  const int lsign = ml.pwm < 0 ? -1 : 1;
+  const int rsign = mr.pwm < 0 ? -1 : 1;
+  const float value = fabs(dz); 
+
+  // Inegrale
+  ki_value += dz;
+  if (fabs(dz) > (M_PI / 20))
+    ki_value = 0.f;
+
+  const float correctionCoeff = kp * value + ki * ki_value;
+  const float correctedCorrectionCoeff = constrainf(correctionCoeff, -40.f, 40.f);
+  // Serial.printf("Coef: \t%f\n", correctedCorrectionCoeff);
+  if (dz > 0) { // Rigth ahead
+    mr.correctedpwm = mr.pwm - (rsign * correctedCorrectionCoeff) * mr.pwm;
+    ml.correctedpwm = ml.pwm + (lsign * correctedCorrectionCoeff) * ml.pwm;
+  } else { // Left ahead
+    mr.correctedpwm = mr.pwm + (rsign * correctedCorrectionCoeff) * mr.pwm;
+    ml.correctedpwm = ml.pwm - (lsign * correctedCorrectionCoeff) * ml.pwm;
+  }
+
+  // Serial.printf("pwm : %f \t %f   |   %f \t    %f\n", ml.correctedpwm, mr.correctedpwm, correctedCorrectionCoeff * ml.pwm, correctedCorrectionCoeff * mr.pwm);
+}
+
+static int dirmode = 0;
+void dual_wheels_correction_rotation() {
+  float ki_value = 0.f;
+  const float ki = 0.; //-2.3;
+  const float kp = 0.6;
   const int lsign = ml.pwm < 0 ? -1 : 1;
   const int rsign = mr.pwm < 0 ? -1 : 1;
   const float value = fabs(z); 
@@ -177,7 +253,7 @@ void dual_wheels_correction() {
     ki_value = 0.f;
 
   const float correctionCoeff = kp * value + ki * ki_value;
-  const float correctedCorrectionCoeff = constrainf(correctionCoeff, -40.f, 40.f);
+  const float correctedCorrectionCoeff = constrainf(correctionCoeff, -0.f, 0.f);
   // Serial.printf("Coef: \t%f\n", correctedCorrectionCoeff);
   if (z > 0) { // Rigth ahead
     mr.correctedpwm = mr.pwm - (rsign * correctedCorrectionCoeff) * mr.pwm;
@@ -186,14 +262,17 @@ void dual_wheels_correction() {
     mr.correctedpwm = mr.pwm + (rsign * correctedCorrectionCoeff) * mr.pwm;
     ml.correctedpwm = ml.pwm - (lsign * correctedCorrectionCoeff) * ml.pwm;
   }
-  Serial.printf("pwm : %f \t %f   |   %f \t    %f\n", ml.correctedpwm, mr.correctedpwm, correctedCorrectionCoeff * ml.pwm, correctedCorrectionCoeff * mr.pwm);
+  // Serial.printf("Origin pwm: %f %f\n", ml.pwm, mr.pwm);
+  // Serial.printf("pwm : %f \t %f   |   %f \t    %f\n", ml.correctedpwm, mr.correctedpwm, correctedCorrectionCoeff * ml.pwm, correctedCorrectionCoeff * mr.pwm);
 }
 
 /* pwm > 0 is forward, backward otherward */
 void wheel_setpwm(float pwm, const enum side_t side) {
   DCMotor *m = (side == LEFT) ? &ml : &mr;
+  // Serial.printf("Set pwm %f\n", pwm);
 
-  digitalWrite(STDBYP, HIGH);
+  if (!switched_off)
+    digitalWrite(STDBYP, HIGH);
 
   /* Ensure the pwm>0 is forward rule */
   const int dir = (m->side * pwm) >= 0.f ? 0 : 1;
@@ -210,12 +289,18 @@ void wheel_setpwm(float pwm, const enum side_t side) {
   // Serial.printf("%s: ctrlpin1 : %d | ctrlpin2 : %d | dir : %d | pwmchanel :%d | pwm : %f\n", side == LEFT ? "LEFT" : "RIGHT", m->ctrlpin1, m->ctrlpin2, dir, m->pwmchanel, pwm);
 }
 
-void wheels_update() {
+void wheels_update(float dz) {
 
   if (xSemaphoreTake(xStateMutex, portMAX_DELAY) == pdTRUE) {
-    wheel_update(&ml);
-    wheel_update(&mr);
-    dual_wheels_correction();
+    if (dirmode == 0) {
+      wheel_update(&ml);
+      wheel_update(&mr);
+      dual_wheels_correction_straight(dz);
+    } else if (dirmode == 1) {
+      wheel_update_rotation(&ml);
+      wheel_update_rotation(&mr);
+      dual_wheels_correction_rotation();
+    }
     xSemaphoreGive(xStateMutex);
   }
 
@@ -224,11 +309,23 @@ void wheels_update() {
   // Serial.printf("%d %d : %ld | %d %d : %ld\n", ldir, ltpwm, ml.ticksAim - ml.ticksCounter, rdir, rtpwm, mr.ticksAim - mr.ticksCounter);
   // Serial.printf("%ld %ld\n", ml.lastUpdateTicksDiff, mr.lastUpdateTicksDiff);
 }
+void wheels_setpoint_relative(const float dist, const enum side_t side) {
+  DCMotor *m = (side == LEFT) ? &ml : &mr;
+  m->ticksAim += distance_to_ticks(dist);
+  Serial.printf("%ld %ld\n", ml.ticksAim, mr.ticksAim);
+}
 
 void wheels_setpoint(const float dist, const enum side_t side) {
   DCMotor *m = (side == LEFT) ? &ml : &mr;
+  m->ticksCounter = 0;
   m->ticksAim = distance_to_ticks(dist);
   Serial.printf("%ld %ld\n", ml.ticksAim, mr.ticksAim);
+}
+ 
+// 0 : straight 
+// 1 : rotation
+void wheels_setmode(int mode) {
+  dirmode = mode;
 }
 
 float wheels_get_rpm(const enum side_t side) {
@@ -242,6 +339,7 @@ float wheels_get_pwm(const enum side_t side) {
 }
 
 void wheels_switch_off() {
+  switched_off = 1;
   digitalWrite(STDBYP, LOW);
 }
 

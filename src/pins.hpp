@@ -15,4 +15,10 @@
 #define LEDBLUEP 17 
 #define LEDWHITEP 18
 
+#define VL53L1X_XSHUT 23 
+#define SDA_PIN 21 
+#define SCL_PIN 22
+
+#define TIRETTE_PIN 15
+
 #endif /* _PINS_H_ */
