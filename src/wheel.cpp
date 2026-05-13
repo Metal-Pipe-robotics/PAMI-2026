@@ -158,7 +158,7 @@ void encoders_reset() {
 
 void wheel_update(DCMotor *m) {
   const float magicNumber = 15.f / 50.f * WHEEL_UPDATE_INTERVAL_MS;
-  const long ticksDiff = (m->ticksAim - m->ticksCounter) > 600 ? 30000 : (m->ticksAim - m->ticksCounter);
+  const long ticksDiff = (m->ticksAim - m->ticksCounter) > 100 ? 30000 : (m->ticksAim - m->ticksCounter);
   float newpwm = constrainf(ticksDiff * 0.02f, m->pwm -0.3, m->pwm + 0.3);
   if (m->pwm < 1e-6f && ticksDiff > 130) {
     newpwm = (ticksDiff >= 0.f ? 1.f : -1.f) * 20.f;
@@ -214,9 +214,10 @@ int is_cmd_finished() {
 void dual_wheels_correction_straight(float dz) {
   float ki_value = 0.f;
   const float ki = 0.; //-2.3;
-  const float kp = 1.18;
-  const int lsign = ml.pwm < 0 ? -1 : 1;
-  const int rsign = mr.pwm < 0 ? -1 : 1;
+  const float kp = 1.88;
+  const int lsign = (ml.pwm) < 0 ? -1 : 1;
+  const int rsign = (mr.pwm) < 0 ? -1 : 1;
+  // Serial.printf("%d %d %f\n", lsign, rsign, dz);
   const float value = fabs(dz); 
 
   // Inegrale
@@ -268,6 +269,7 @@ void dual_wheels_correction_rotation() {
 
 /* pwm > 0 is forward, backward otherward */
 void wheel_setpwm(float pwm, const enum side_t side) {
+  pwm = constrainf(pwm, -120.f, 120.f); // Avoid burning the driver down to ashes
   DCMotor *m = (side == LEFT) ? &ml : &mr;
   // Serial.printf("Set pwm %f\n", pwm);
 
@@ -319,6 +321,7 @@ void wheels_setpoint(const float dist, const enum side_t side) {
   DCMotor *m = (side == LEFT) ? &ml : &mr;
   m->ticksCounter = 0;
   m->ticksAim = distance_to_ticks(dist);
+  // m->pwm = 0;
   Serial.printf("%ld %ld\n", ml.ticksAim, mr.ticksAim);
 }
  

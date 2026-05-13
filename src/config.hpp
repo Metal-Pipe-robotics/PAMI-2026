@@ -1,14 +1,14 @@
 #ifndef _SETTINGS_H_ 
 
 #define TICKS_PER_REVOLUTION 630
-#define WHEEL_RADIUS 0.02675  // original : 0.02675
+#define WHEEL_RADIUS 0.02670  // original : 0.02675
 #define WHEELS_SPACING 0.0784 // original : 0.0753
 
 #define WHEEL_UPDATE_INTERVAL_MS 50
 #define ENCODERS_UPDATE_INTERVAL_MS 10
 
 #define WHEEL_MAX_PWM 50
-#define WHEEL_MAX_PWM_ROTATION 35
-#define WHEEL_MIN_PWM 13
+#define WHEEL_MAX_PWM_ROTATION 25
+#define WHEEL_MIN_PWM 10
 
 #endif /* _SETTINGS_H_ */
