@@ -5,6 +5,7 @@
 
 static int switched_off = 0;
 static SemaphoreHandle_t xStateMutex;
+static int locked_wheels = 0;
 
 typedef struct {
   enum side_t side;
@@ -294,14 +295,16 @@ void wheel_setpwm(float pwm, const enum side_t side) {
 void wheels_update(float dz) {
 
   if (xSemaphoreTake(xStateMutex, portMAX_DELAY) == pdTRUE) {
-    if (dirmode == 0) {
-      wheel_update(&ml);
-      wheel_update(&mr);
-      dual_wheels_correction_straight(dz);
-    } else if (dirmode == 1) {
-      wheel_update_rotation(&ml);
-      wheel_update_rotation(&mr);
-      dual_wheels_correction_rotation();
+    if (!locked_wheels) {
+      if (dirmode == 0) {
+        wheel_update(&ml);
+        wheel_update(&mr);
+        dual_wheels_correction_straight(dz);
+      } else if (dirmode == 1) {
+        wheel_update_rotation(&ml);
+        wheel_update_rotation(&mr);
+        dual_wheels_correction_rotation();
+      }
     }
     xSemaphoreGive(xStateMutex);
   }
@@ -329,6 +332,18 @@ void wheels_setpoint(const float dist, const enum side_t side) {
 // 1 : rotation
 void wheels_setmode(int mode) {
   dirmode = mode;
+}
+
+void wheels_lock_wheels() {
+  mr.correctedpwm = 0;
+  ml.correctedpwm = 0;
+  mr.pwm = 0;
+  ml.pwm = 0;
+  locked_wheels = 12;
+}
+
+void wheels_unlock_wheels() {
+  locked_wheels = locked_wheels ? locked_wheels - 1 : 0;
 }
 
 float wheels_get_rpm(const enum side_t side) {

@@ -30,7 +30,12 @@ void vTaskWheels(void *pvParameters) {
     const TickType_t xPeriod  = pdMS_TO_TICKS(WHEEL_UPDATE_INTERVAL_MS);
 
     for (;;) {
-    VL53L1X_task();
+      const int d = VL53L1X_task();
+      if (d >= 0 && d < 90)
+        wheels_lock_wheels();
+      else if (d>= 90)
+        wheels_unlock_wheels();
+        
         odometry_get_pos(&x, &y, &z);
         if (is_cmd_finished() || is_cmd_finished_pos(x, y, z))
           exec_next_cmd(x, y, z);
@@ -59,12 +64,11 @@ void vTaskPrintAndLED(void *pvParameters) {
     }
 }
 
-int distance = 0;
+volatile int distance = 100;
 void vTaskVlx(void *pvParameters) {
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xPeriod = pdMS_TO_TICKS(300);
   for (;;) {
-    distance = VL53L1X_task();
     vTaskDelayUntil(&xLastWakeTime, xPeriod);
   }
 }

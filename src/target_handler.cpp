@@ -8,7 +8,9 @@
 static struct Pose robot_target_pos; 
 
 static int dirmode = 0;
+// 0: blue, 1 : yellow
 void def_targets() {
+#ifndef HOMOLOGATION
 // waypoint_add_pose( (struct Pose) {
 //     0.5f,
 //     0.f,
@@ -27,6 +29,61 @@ void def_targets() {
 //     M_PI,
 //     0.05f
 //   });
+#else 
+#ifdef JAUNE
+  waypoint_add_pose( (struct Pose) {
+    0.0f,
+    0.f,
+    0.f,
+    0.05f
+  });
+waypoint_add_pose( (struct Pose) {
+    0.45f,
+    0.f,
+    0.f,
+    0.05f
+  });
+waypoint_add_pose( (struct Pose) {
+    0.45f,
+    0.f,
+    M_PI/2,
+    0.05f
+  });
+waypoint_add_pose( (struct Pose) {
+    0.45f,
+    -1.15f,
+    M_PI/2,
+    0.05f
+  });
+#else 
+  waypoint_add_pose( (struct Pose) {
+    0.0f,
+    0.f,
+    0.f,
+    0.05f
+  });
+waypoint_add_pose( (struct Pose) {
+    0.45f,
+    0.f,
+    0.f,
+    0.05f
+  });
+waypoint_add_pose( (struct Pose) {
+    0.45f,
+    0.f,
+    -M_PI/2,
+    0.05f
+  });
+waypoint_add_pose( (struct Pose) {
+    0.45f,
+    1.15f,
+    -M_PI/2,
+    0.05f
+  });
+#endif
+
+
+#endif
 }
 
 float get_angle_to_target(float x, float y, float z) {
@@ -93,9 +150,4 @@ int is_cmd_finished_pos(float x, float y, float z) {
   }
   return 0;
 }
-
-/* 
- * radius cercle = (ecart_whel * M_PI) / (z / (2*M_PI))
- */
-
 

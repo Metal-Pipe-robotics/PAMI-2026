@@ -6,6 +6,8 @@ enum side_t {
   RIGHT = 1
 };
 
+void wheels_lock_wheels();
+void wheels_unlock_wheels();
 void wheels_setpoint_relative(const float dist, const enum side_t side);
 void wheels_init();
 void wheels_setpoint(const float dist, const enum side_t side); 
