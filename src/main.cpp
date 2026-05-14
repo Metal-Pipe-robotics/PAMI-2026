@@ -78,7 +78,7 @@ void wait_for_tirette() {
   while (digitalRead(TIRETTE_PIN) == LOW) {
     vTaskDelay(100);
     if (digitalRead(COLOR_PIN) == HIGH)
-      digitalWrite(LEDBLUEP, HIGH)
+      digitalWrite(LEDBLUEP, HIGH);
     else 
       digitalWrite(LEDBLUEP, LOW);
   }
@@ -86,10 +86,12 @@ void wait_for_tirette() {
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.printf("Begin setup\n");
   wheels_init();
+  Serial.printf("Begin waypoint init\n");
   waypoint_init_all();
+  Serial.printf("Begin vlx setup\n");
   
   VL53LX_setup();
   sleep(1);
@@ -102,17 +104,18 @@ void setup() {
   pinMode(COLOR_PIN, INPUT_PULLUP);
   digitalWrite(LEDBLUEP, HIGH);
   digitalWrite(LEDWHITEP, LOW);
+  Serial.printf("wait for tirette\n");
   wait_for_tirette();
   const int color = digitalRead(COLOR_PIN);
   Serial.printf("Playing color %s\n", color == 0 ? "blue" : "yellow");
   def_targets(color);
   encoders_reset();
-  vTaskDelay(85000);
+  // vTaskDelay(85000);
   xTaskCreate(vTaskEncoders,    "Encoders",  2048*4, NULL, 3, NULL);
   xTaskCreate(vTaskWheels,      "Wheels",    4096*4, NULL, 3, NULL);
   xTaskCreate(vTaskPrintAndLED, "Print",     2048*4, NULL, 1, NULL);
   vTaskDelay(15000);
-  wheels_switch_off();
+  // wheels_switch_off();
   servo_start();
 }
 

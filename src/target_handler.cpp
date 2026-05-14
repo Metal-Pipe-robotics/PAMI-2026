@@ -138,14 +138,22 @@ void def_targets(int color) {
 //     0.05f
 //   });
 #else 
+#ifdef PAMI9
+  if (color == 1) { // yelow 
+       def_yellow_path1();
+}
+else { // blue 
+       def_blue_path1();
+}
+#endif 
+#ifdef PAMI10
   if (color == 1) { // yelow 
        def_yellow_path2();
 }
 else { // blue 
        def_blue_path2();
 }
-
-
+#endif
 #endif
 }
 

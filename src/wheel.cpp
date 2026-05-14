@@ -82,6 +82,7 @@ static void IRAM_ATTR read_encoder_right() {
 }
 
 static void wheel_init(DCMotor *m, void (*enc_func)()) {
+  Serial.printf("Wheel init\n");
   pinMode(STDBYP, OUTPUT);
   pinMode(m->encpin1, INPUT);
   pinMode(m->encpin2, INPUT);

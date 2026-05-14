@@ -1,3 +1,9 @@
+#ifdef PAMI9 
+#define VL0X
+#endif
+#ifdef PAMI10 
+#define VL1X
+#endif
 #ifdef VL1X
 
 #include <Wire.h>
