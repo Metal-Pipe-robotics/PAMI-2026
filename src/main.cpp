@@ -84,7 +84,6 @@ void setup() {
   Serial.printf("Begin setup\n");
   wheels_init();
   waypoint_init_all();
-  def_targets();
   
   VL53L1X_setup();
   sleep(1);
@@ -94,9 +93,13 @@ void setup() {
   pinMode(LEDBLUEP, OUTPUT);
   pinMode(LEDWHITEP, OUTPUT);
   pinMode(TIRETTE_PIN, INPUT_PULLUP);
+  pinMode(COLOR_PIN, INPUT_PULLUP);
   digitalWrite(LEDBLUEP, HIGH);
   digitalWrite(LEDWHITEP, LOW);
   wait_for_tirette();
+  const int color = digitalRead(COLOR_PIN);
+  Serial.printf("Playing color %s\n", color == 0 ? "blue" : "yellow");
+  def_targets(color);
   encoders_reset();
   xTaskCreate(vTaskEncoders,    "Encoders",  2048*4, NULL, 3, NULL);
   xTaskCreate(vTaskWheels,      "Wheels",    4096*4, NULL, 3, NULL);

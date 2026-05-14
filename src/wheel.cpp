@@ -160,7 +160,7 @@ void encoders_reset() {
 void wheel_update(DCMotor *m) {
   const float magicNumber = 15.f / 50.f * WHEEL_UPDATE_INTERVAL_MS;
   const long ticksDiff = (m->ticksAim - m->ticksCounter) > 100 ? 30000 : (m->ticksAim - m->ticksCounter);
-  float newpwm = constrainf(ticksDiff * 0.02f, m->pwm -0.3, m->pwm + 0.3);
+  float newpwm = constrainf(ticksDiff * 0.02f, m->pwm -0.6, m->pwm + 0.6);
   if (m->pwm < 1e-6f && ticksDiff > 130) {
     newpwm = (ticksDiff >= 0.f ? 1.f : -1.f) * 20.f;
   }
@@ -244,10 +244,10 @@ static int dirmode = 0;
 void dual_wheels_correction_rotation() {
   float ki_value = 0.f;
   const float ki = 0.; //-2.3;
-  const float kp = 0.6;
+  const float kp = 1.6;
   const int lsign = ml.pwm < 0 ? -1 : 1;
   const int rsign = mr.pwm < 0 ? -1 : 1;
-  const float value = fabs(z); 
+  const float value = fabs(ml.ticksAim - ml.ticksCounter) - fabs(mr.ticksAim - mr.ticksCounter); 
 
   // Inegrale
   ki_value += z;

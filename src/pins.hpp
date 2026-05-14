@@ -20,5 +20,6 @@
 #define SCL_PIN 22
 
 #define TIRETTE_PIN 15
+#define COLOR_PIN 5
 
 #endif /* _PINS_H_ */

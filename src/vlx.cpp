@@ -43,12 +43,12 @@ int VL53L1X_task()
 
     distance = sensor.read();
 
-    if (!sensor.timeoutOccurred()) {
-      distance = sensor.read();
-      Serial.print("Distance: ");
-      Serial.print(distance);
-      Serial.println(" mm");
-    }
+    // if (!sensor.timeoutOccurred()) {
+    //   distance = sensor.read();
+    //   Serial.print("Distance: ");
+    //   Serial.print(distance);
+    //   Serial.println(" mm");
+    // }
 
   }
   return distance;

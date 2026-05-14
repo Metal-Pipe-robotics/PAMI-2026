@@ -9,7 +9,7 @@ static struct Pose robot_target_pos;
 
 static int dirmode = 0;
 // 0: blue, 1 : yellow
-void def_targets() {
+void def_targets(int color) {
 #ifndef HOMOLOGATION
 // waypoint_add_pose( (struct Pose) {
 //     0.5f,
@@ -30,7 +30,7 @@ void def_targets() {
 //     0.05f
 //   });
 #else 
-#ifdef JAUNE
+  if (color == 1) { // yelow
   waypoint_add_pose( (struct Pose) {
     0.0f,
     0.f,
@@ -55,7 +55,8 @@ waypoint_add_pose( (struct Pose) {
     M_PI/2,
     0.05f
   });
-#else 
+}
+else { // blue 
   waypoint_add_pose( (struct Pose) {
     0.0f,
     0.f,
@@ -80,7 +81,7 @@ waypoint_add_pose( (struct Pose) {
     -M_PI/2,
     0.05f
   });
-#endif
+}
 
 
 #endif
