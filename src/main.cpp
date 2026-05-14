@@ -58,7 +58,7 @@ void vTaskPrintAndLED(void *pvParameters) {
         Serial.printf("%3.3lf   %3.3lf   %3.3lf\n", x, y, z * 180.0 / M_PI);
 
         ledState = !ledState;
-        digitalWrite(LEDBLUEP, ledState ? HIGH : LOW);
+        // digitalWrite(LEDBLUEP, ledState ? HIGH : LOW);
 
         vTaskDelayUntil(&xLastWakeTime, xPeriod);
     }
@@ -74,9 +74,15 @@ void vTaskVlx(void *pvParameters) {
 }
 
 void wait_for_tirette() {
+  digitalWrite(LEDWHITEP, HIGH);
   while (digitalRead(TIRETTE_PIN) == LOW) {
     vTaskDelay(100);
+    if (digitalRead(COLOR_PIN) == HIGH)
+      digitalWrite(LEDBLUEP, HIGH)
+    else 
+      digitalWrite(LEDBLUEP, LOW);
   }
+  digitalWrite(LEDWHITEP, LOW);
 }
 
 void setup() {

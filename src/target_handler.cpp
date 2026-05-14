@@ -138,8 +138,7 @@ void def_targets(int color) {
 //     0.05f
 //   });
 #else 
-  if (color == 1) { // yelow
-  
+  if (color == 1) { // yelow 
        def_yellow_path2();
 }
 else { // blue 
