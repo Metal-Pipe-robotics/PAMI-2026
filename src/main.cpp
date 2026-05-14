@@ -22,7 +22,7 @@ void vTaskEncoders(void *pvParameters) {
 }
 
 void vTaskWheels(void *pvParameters) {
-    VL53L1X_task();
+    VL53LX_task();
     TickType_t xLastWakeTime = xTaskGetTickCount();
     double x, y, z;
     odometry_get_pos(&x, &y, &z);
@@ -30,7 +30,7 @@ void vTaskWheels(void *pvParameters) {
     const TickType_t xPeriod  = pdMS_TO_TICKS(WHEEL_UPDATE_INTERVAL_MS);
 
     for (;;) {
-      const int d = VL53L1X_task();
+      const int d = VL53LX_task();
       if (d >= 0 && d < 90)
         wheels_lock_wheels();
       else if (d>= 90)
@@ -85,7 +85,7 @@ void setup() {
   wheels_init();
   waypoint_init_all();
   
-  VL53L1X_setup();
+  VL53LX_setup();
   sleep(1);
   // wheels_setpoint(1.6, RIGHT);
   // wheels_setpoint(1.6, LEFT);
@@ -101,11 +101,13 @@ void setup() {
   Serial.printf("Playing color %s\n", color == 0 ? "blue" : "yellow");
   def_targets(color);
   encoders_reset();
+  vTaskDelay(85000);
   xTaskCreate(vTaskEncoders,    "Encoders",  2048*4, NULL, 3, NULL);
   xTaskCreate(vTaskWheels,      "Wheels",    4096*4, NULL, 3, NULL);
   xTaskCreate(vTaskPrintAndLED, "Print",     2048*4, NULL, 1, NULL);
-  vTaskDelay(1000);
-  // servo_start();
+  vTaskDelay(15000);
+  wheels_switch_off();
+  servo_start();
 }
 
 void loop() {

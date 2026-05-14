@@ -180,7 +180,7 @@ void wheel_update_rotation(DCMotor *m) {
   const int sign = (m->ticksAim - m->ticksCounter) >= 0 ? 1 : -1;
   // const long ticksDiff = fabs(m->ticksAim - m->ticksCounter) > 300 ? sign * 30000 : (m->ticksAim - m->ticksCounter);
   const long ticksDiff = m->ticksAim - m->ticksCounter;
-  float newpwm = constrainf(ticksDiff * 0.14f, m->pwm -0.1, m->pwm + 0.1);
+  float newpwm = constrainf(ticksDiff * 0.14f, m->pwm -0.2, m->pwm + 0.2);
   // if (fabs(m->pwm) < 1) {
   //   if (ticksDiff >= 0)
   //     newpwm = WHEEL_MIN_PWM;
@@ -244,7 +244,7 @@ static int dirmode = 0;
 void dual_wheels_correction_rotation() {
   float ki_value = 0.f;
   const float ki = 0.; //-2.3;
-  const float kp = 1.6;
+  const float kp = 0.007;
   const int lsign = ml.pwm < 0 ? -1 : 1;
   const int rsign = mr.pwm < 0 ? -1 : 1;
   const float value = fabs(ml.ticksAim - ml.ticksCounter) - fabs(mr.ticksAim - mr.ticksCounter); 
@@ -257,7 +257,7 @@ void dual_wheels_correction_rotation() {
   const float correctionCoeff = kp * value + ki * ki_value;
   const float correctedCorrectionCoeff = constrainf(correctionCoeff, -0.f, 0.f);
   // Serial.printf("Coef: \t%f\n", correctedCorrectionCoeff);
-  if (z > 0) { // Rigth ahead
+  if (value > 0) { // Rigth ahead
     mr.correctedpwm = mr.pwm - (rsign * correctedCorrectionCoeff) * mr.pwm;
     ml.correctedpwm = ml.pwm + (lsign * correctedCorrectionCoeff) * ml.pwm;
   } else { // Left ahead

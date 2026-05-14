@@ -7,6 +7,114 @@
 
 static struct Pose robot_target_pos; 
 
+void def_yellow_path1() {
+  waypoint_add_pose( (struct Pose) {
+      0.0f,
+      0.f,
+      0.f,
+      0.05f
+    });
+  waypoint_add_pose( (struct Pose) {
+      0.5f,
+      0.f,
+      0.f,
+      0.05f
+    });
+  waypoint_add_pose( (struct Pose) {
+      0.5f,
+      0.f,
+      M_PI/2 + 0.32,
+      0.05f
+    });
+  waypoint_add_pose( (struct Pose) {
+      0.45f,
+      -0.62f,
+      M_PI/2 + 0.32,
+      0.05f
+    });
+}
+
+void def_yellow_path2() {
+  waypoint_add_pose( (struct Pose) {
+      0.0f,
+      0.f,
+      0.f,
+      0.05f
+    });
+  waypoint_add_pose( (struct Pose) {
+      0.78f,
+      0.f,
+      0.f,
+      0.05f
+    });
+  waypoint_add_pose( (struct Pose) {
+      0.78f,
+      0.f,
+      -M_PI/2 ,
+      0.05f
+    });
+  waypoint_add_pose( (struct Pose) {
+      0.78f,
+      0.55f,
+      -M_PI/2 ,
+      0.05f
+    });
+}
+
+void def_blue_path1() {
+  waypoint_add_pose( (struct Pose) {
+    0.0f,
+    0.f,
+    0.f,
+    0.05f
+  });
+waypoint_add_pose( (struct Pose) {
+    0.50f,
+    0.f,
+    0.f,
+    0.05f
+  });
+waypoint_add_pose( (struct Pose) {
+    0.50f,
+    0.f,
+    -M_PI/2,
+    0.05f
+  });
+waypoint_add_pose( (struct Pose) {
+    0.50f,
+    0.62f,
+    -M_PI/2,
+    0.05f
+  });
+}
+
+void def_blue_path2() {
+  waypoint_add_pose( (struct Pose) {
+      0.0f,
+      0.f,
+      0.f,
+      0.05f
+    });
+  waypoint_add_pose( (struct Pose) {
+      0.78f,
+      0.f,
+      0.f,
+      0.05f
+    });
+  waypoint_add_pose( (struct Pose) {
+      0.78f,
+      0.f,
+      M_PI/2,
+      0.05f
+    });
+  waypoint_add_pose( (struct Pose) {
+      0.78f,
+      -0.55f,
+      M_PI/2,
+      0.05f
+    });
+}
+
 static int dirmode = 0;
 // 0: blue, 1 : yellow
 void def_targets(int color) {
@@ -31,56 +139,11 @@ void def_targets(int color) {
 //   });
 #else 
   if (color == 1) { // yelow
-  waypoint_add_pose( (struct Pose) {
-    0.0f,
-    0.f,
-    0.f,
-    0.05f
-  });
-waypoint_add_pose( (struct Pose) {
-    0.45f,
-    0.f,
-    0.f,
-    0.05f
-  });
-waypoint_add_pose( (struct Pose) {
-    0.45f,
-    0.f,
-    M_PI/2,
-    0.05f
-  });
-waypoint_add_pose( (struct Pose) {
-    0.45f,
-    -1.15f,
-    M_PI/2,
-    0.05f
-  });
+  
+       def_yellow_path2();
 }
 else { // blue 
-  waypoint_add_pose( (struct Pose) {
-    0.0f,
-    0.f,
-    0.f,
-    0.05f
-  });
-waypoint_add_pose( (struct Pose) {
-    0.45f,
-    0.f,
-    0.f,
-    0.05f
-  });
-waypoint_add_pose( (struct Pose) {
-    0.45f,
-    0.f,
-    -M_PI/2,
-    0.05f
-  });
-waypoint_add_pose( (struct Pose) {
-    0.45f,
-    1.15f,
-    -M_PI/2,
-    0.05f
-  });
+       def_blue_path2();
 }
 
 
